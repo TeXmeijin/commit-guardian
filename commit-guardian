@@ -181,7 +181,7 @@ app.post('/api/reject', (req, res) => {
     }, 5000);
 });
 
-// Serve the HTML interface
+// Serve the HTML interface with diff2html
 app.get('/', (req, res) => {
     const htmlContent = `
 <!DOCTYPE html>
@@ -191,6 +191,7 @@ app.get('/', (req, res) => {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Commit Guardian - Review Changes</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <style>
         * {
             margin: 0;
@@ -200,48 +201,39 @@ app.get('/', (req, res) => {
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            line-height: 1.5;
+            line-height: 1.4;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            font-size: 13px;
+            padding-bottom: 100px; /* Space for fixed bottom bar */
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1600px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 16px;
         }
         
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 24px;
-            padding-bottom: 16px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
             border-bottom: 1px solid #30363d;
         }
         
         .title {
-            font-size: 24px;
-            font-weight: 600;
-            color: #f0f6fc;
-        }
-        
-        .status {
-            padding: 8px 16px;
-            border-radius: 6px;
-            font-size: 14px;
+            font-size: 18px;
             font-weight: 500;
-        }
-        
-        .status.pending {
-            background: #1f2937;
-            color: #fbbf24;
-            border: 1px solid #374151;
+            color: #e6edf3;
         }
         
         .diff-container {
             border: 1px solid #30363d;
             border-radius: 6px;
             background: #161b22;
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
         
         .file-header {
@@ -249,8 +241,9 @@ app.get('/', (req, res) => {
             background: #21262d;
             border-bottom: 1px solid #30363d;
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 14px;
-            font-weight: 600;
+            font-size: 12px;
+            font-weight: 500;
+            color: #e6edf3;
         }
         
         .collapsible-header {
@@ -273,13 +266,13 @@ app.get('/', (req, res) => {
             background: #1c2128;
             border-bottom: 1px solid #30363d;
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 500;
-            color: #f0f6fc;
+            color: #e6edf3;
         }
         
         .file-diff {
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             border: 1px solid #30363d;
             border-radius: 4px;
             background: #161b22;
@@ -292,20 +285,21 @@ app.get('/', (req, res) => {
         .diff-line {
             display: flex;
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 14px;
-            line-height: 1.45;
+            font-size: 12px;
+            line-height: 1.4;
             position: relative;
         }
         
         .line-number {
             padding: 0 8px;
             background: #161b22;
-            color: #656d76;
-            min-width: 60px;
+            color: #8b949e;
+            min-width: 50px;
             text-align: right;
             user-select: none;
             border-right: 1px solid #30363d;
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 11px;
         }
         
         .line-content {
@@ -340,6 +334,141 @@ app.get('/', (req, res) => {
             background: #1c2128 !important;
         }
         
+        .approve-section {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #161b22;
+            border-top: 1px solid #30363d;
+            padding: 12px 16px;
+            z-index: 1000;
+            box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .approve-content {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .approve-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: #8b949e;
+            margin: 0;
+            white-space: nowrap;
+            margin-right: 8px;
+        }
+        
+        .commit-message {
+            flex: 1;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            padding: 8px 12px;
+            font-family: inherit;
+            font-size: 13px;
+            resize: none;
+            height: 36px;
+            line-height: 1.4;
+        }
+        
+        .commit-message:focus {
+            outline: none;
+            border-color: #238636;
+            box-shadow: 0 0 0 2px rgba(35, 134, 54, 0.2);
+        }
+        
+        .approve-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+        
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            white-space: nowrap;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .btn-success {
+            background: #238636;
+            border-color: #238636;
+            color: #fff;
+        }
+        
+        .btn-success:hover {
+            background: #2ea043;
+        }
+        
+        .btn-danger {
+            background: #da3633;
+            border-color: #da3633;
+            color: #fff;
+        }
+        
+        .btn-danger:hover {
+            background: #f85149;
+        }
+        
+        .comments-list {
+            margin-top: 8px;
+        }
+        
+        .comments-summary {
+            font-size: 11px;
+            color: #8b949e;
+            margin-right: 12px;
+        }
+        
+        .comment-item {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+        }
+        
+        .comment-meta {
+            font-size: 11px;
+            color: #8b949e;
+            margin-bottom: 2px;
+        }
+        
+        .no-changes {
+            text-align: center;
+            padding: 32px;
+            color: #8b949e;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            margin: 16px 0;
+            font-size: 13px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 32px;
+            color: #8b949e;
+            font-size: 13px;
+        }
+        
+        
+        /* Comment functionality styles */
         .comment-btn {
             position: absolute;
             right: 8px;
@@ -348,12 +477,17 @@ app.get('/', (req, res) => {
             background: #238636;
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 3px;
             padding: 2px 6px;
-            font-size: 12px;
+            font-size: 10px;
             cursor: pointer;
             opacity: 0;
             transition: opacity 0.2s;
+            z-index: 10;
+        }
+        
+        .comment-btn:hover {
+            background: #2ea043;
         }
         
         .diff-line:hover .comment-btn {
@@ -364,7 +498,7 @@ app.get('/', (req, res) => {
             background: #161b22;
             border: 1px solid #30363d;
             border-radius: 6px;
-            margin: 8px 16px;
+            margin: 8px;
             padding: 16px;
         }
         
@@ -386,14 +520,9 @@ app.get('/', (req, res) => {
             margin-top: 8px;
         }
         
-        .btn {
-            padding: 6px 16px;
-            border-radius: 6px;
-            border: 1px solid;
+        .btn-sm {
+            padding: 6px 12px;
             font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.15s;
         }
         
         .btn-primary {
@@ -402,106 +531,18 @@ app.get('/', (req, res) => {
             color: #fff;
         }
         
-        .btn-primary:hover {
-            background: #2ea043;
-        }
-        
         .btn-secondary {
             background: transparent;
             border-color: #30363d;
             color: #c9d1d9;
         }
-        
-        .btn-secondary:hover {
-            background: #21262d;
-        }
-        
-        .approve-section {
-            background: #161b22;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            padding: 24px;
-            margin-top: 24px;
-        }
-        
-        .approve-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 16px;
-            color: #f0f6fc;
-        }
-        
-        .commit-message {
-            width: 100%;
-            background: #0d1117;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            color: #c9d1d9;
-            padding: 12px;
-            font-family: inherit;
-            font-size: 14px;
-            margin-bottom: 16px;
-            min-height: 80px;
-            resize: vertical;
-        }
-        
-        .approve-actions {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .btn-success {
-            background: #238636;
-            border-color: #238636;
-            color: #fff;
-            padding: 12px 24px;
-            font-size: 16px;
-        }
-        
-        .btn-danger {
-            background: #da3633;
-            border-color: #da3633;
-            color: #fff;
-            padding: 12px 24px;
-            font-size: 16px;
-        }
-        
-        .comments-list {
-            margin-top: 16px;
-        }
-        
-        .comment-item {
-            background: #21262d;
-            border: 1px solid #30363d;
-            border-radius: 6px;
-            padding: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .comment-meta {
-            font-size: 12px;
-            color: #656d76;
-            margin-bottom: 4px;
-        }
-        
-        .no-changes {
-            text-align: center;
-            padding: 48px;
-            color: #656d76;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 48px;
-            color: #656d76;
-        }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-100">
+<body>
     <div class="container">
         <div class="header">
             <h1 class="title">🛡️ Commit Guardian - Review Changes</h1>
-            <div id="fileStats" class="text-sm text-gray-400"></div>
+            <div id="fileStats" style="font-size: 11px; color: #8b949e;"></div>
         </div>
         
         <div id="content">
@@ -509,20 +550,21 @@ app.get('/', (req, res) => {
         </div>
         
         <div class="approve-section">
-            <h3 class="approve-title">📝 Commit Message</h3>
-            <textarea 
-                id="commitMessage" 
-                class="commit-message" 
-                placeholder="Enter your commit message here..."
-                required
-            ></textarea>
-            
-            <div id="commentsList" class="comments-list"></div>
-            
-            <div class="approve-actions flex gap-3">
-                <button id="approveBtn" class="btn btn-success bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-medium transition-colors">✅ Approve & Commit</button>
-                <button id="rejectBtn" class="btn btn-danger bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md font-medium transition-colors">❌ Reject</button>
+            <div class="approve-content">
+                <span class="approve-title">Message:</span>
+                <textarea 
+                    id="commitMessage" 
+                    class="commit-message" 
+                    placeholder="Enter your commit message..."
+                    required
+                ></textarea>
+                <span id="commentsCount" class="comments-summary"></span>
+                <div class="approve-actions">
+                    <button id="approveBtn" class="btn btn-success">✅ Approve</button>
+                    <button id="rejectBtn" class="btn btn-danger">❌ Reject</button>
+                </div>
             </div>
+            <div id="commentsList" class="comments-list" style="display: none;"></div>
         </div>
     </div>
     <script src="/app.js"></script>
@@ -535,7 +577,7 @@ app.get('/', (req, res) => {
 // Serve JavaScript separately to avoid template literal conflicts
 app.get('/app.js', (req, res) => {
     res.type('application/javascript');
-    res.send(`
+    const jsContent = `
         let diffData = null;
         let comments = [];
         let activeCommentForm = null;
@@ -543,12 +585,20 @@ app.get('/app.js', (req, res) => {
         // Load initial data
         async function loadDiff() {
             try {
+                console.log('Loading diff data...');
                 const response = await fetch('/api/diff');
+                
+                if (!response.ok) {
+                    throw new Error('HTTP error! status: ' + response.status);
+                }
+                
                 diffData = await response.json();
+                console.log('Diff data loaded:', diffData);
+                
                 renderDiff();
             } catch (error) {
                 console.error('Error loading diff:', error);
-                document.getElementById('content').innerHTML = '<div class="loading">Error loading changes</div>';
+                document.getElementById('content').innerHTML = '<div class="loading">Error loading changes: ' + error.message + '</div>';
             }
         }
 
@@ -576,87 +626,124 @@ app.get('/app.js', (req, res) => {
             attachCommentHandlers();
         }
 
-        function renderDiffSection(title, diff, type, collapsed = false) {
-            if (!diff.trim()) return '';
-            
-            const lines = diff.split('\\n');
-            const sectionId = 'section-' + type;
-            const isCollapsed = collapsed ? 'style="display: none;"' : '';
-            const toggleIcon = collapsed ? '▶️' : '▼';
-            
-            let html = '<div class="diff-container">';
-            html += '<div class="file-header collapsible-header" onclick="toggleSection(\\'' + sectionId + '\\', this)">';
-            html += '<span class="toggle-icon">' + toggleIcon + '</span> ' + title;
-            html += '</div>';
-            html += '<div id="' + sectionId + '" class="collapsible-content" ' + isCollapsed + '>';
-            
-            let currentFile = '';
-            let fileStatus = '';
-            let lineNumber = 0;
-            let fileStarted = false;
-            
-            for (const line of lines) {
-                if (line.startsWith('diff --git')) {
-                    const match = line.match(/diff --git a\\/(.*) b\\/(.*)/);  
-                    fileStatus = 'M'; // Default to modified
-                    if (match) {
-                        // Close previous file section if exists
-                        if (fileStarted) {
-                            html += '</div></div>';
-                        }
-                        
-                        currentFile = match[1];
-                        // Start new file section
-                        html += '<div class="file-diff">';
-                        html += '<div class="individual-file-header font-mono">' + getStatusIcon(fileStatus) + ' ' + currentFile + '</div>';
-                        html += '<div class="diff-content">';
-                        fileStarted = true;
-                    }
-                } else if (line.startsWith('new file mode')) {
-                    fileStatus = 'A'; // Added file
-                    // Skip metadata line
-                } else if (line.startsWith('deleted file mode')) {
-                    fileStatus = 'D'; // Deleted file
-                    // Skip metadata line
-                } else if (line.startsWith('index ')) {
-                    // Skip metadata line
-                } else if (line.startsWith('@@')) {
-                    const match = line.match(/@@ -(\\d+),?\\d* \\+(\\d+),?\\d* @@/);
-                    if (match) {
-                        lineNumber = parseInt(match[2]);
-                    }
-                    // Skip @@ line - it's metadata
-                } else if (line.startsWith('+') && !line.startsWith('+++')) {
-                    html += '<div class="diff-line addition font-mono" data-file="' + currentFile + '" data-line="' + lineNumber + '">';
-                    html += '<div class="line-number font-mono">' + lineNumber + '</div>';
-                    html += '<div class="line-content font-mono">' + escapeHtml(line);
-                    html += '<button class="comment-btn" onclick="showCommentForm(\\'' + currentFile + '\\', ' + lineNumber + ', this)">💬</button>';
-                    html += '</div></div>';
-                    lineNumber++;
-                } else if (line.startsWith('-') && !line.startsWith('---')) {
-                    html += '<div class="diff-line deletion font-mono" data-file="' + currentFile + '" data-line="' + lineNumber + '">';
-                    html += '<div class="line-number font-mono">-</div>';
-                    html += '<div class="line-content font-mono">' + escapeHtml(line);
-                    html += '<button class="comment-btn" onclick="showCommentForm(\\'' + currentFile + '\\', ' + lineNumber + ', this)">💬</button>';
-                    html += '</div></div>';
-                } else if (line.trim() && !line.startsWith('index') && !line.startsWith('+++') && !line.startsWith('---')) {
-                    html += '<div class="diff-line context font-mono" data-file="' + currentFile + '" data-line="' + lineNumber + '">';
-                    html += '<div class="line-number font-mono">' + lineNumber + '</div>';
-                    html += '<div class="line-content font-mono">' + escapeHtml(line);
-                    html += '<button class="comment-btn" onclick="showCommentForm(\\'' + currentFile + '\\', ' + lineNumber + ', this)">💬</button>';
-                    html += '</div></div>';
-                    lineNumber++;
-                }
+        function renderDiffSection(title, diffText, type, collapsed) {
+            if (!diffText || diffText.trim().length === 0) {
+                return '';
             }
             
-            // Close final file section if exists
-            if (fileStarted) {
+            const collapseId = 'collapse-' + type;
+            const collapsedClass = collapsed ? ' style="display: none;"' : '';
+            const icon = collapsed ? '▶' : '▼';
+            
+            let html = '<div class="diff-container">';
+            html += '<div class="file-header collapsible-header" onclick="toggleCollapse(\\'' + collapseId + '\\')">';
+            html += '<span class="toggle-icon">' + icon + '</span> ' + title;
+            html += '</div>';
+
+            html += '<div id="' + collapseId + '"' + collapsedClass + '>';
+            html += parseDiff(diffText);
+            html += '</div></div>';
+            
+            return html;
+        }
+
+        function parseDiff(diffText) {
+            const lines = diffText.split('\\n');
+            let html = '';
+            let currentFile = null;
+            let oldLineNum = 0;
+            let newLineNum = 0;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                
+                if (line.startsWith('diff --git')) {
+                    // New file diff
+                    const match = line.match(/diff --git a\\/(.*) b\\/(.*)/);
+                    if (match) {
+                        currentFile = match[2];
+                        if (html && !html.endsWith('</div>')) {
+                            html += '</div>';
+                        }
+                        html += '<div class="file-diff">';
+                        html += '<div class="individual-file-header">' + currentFile + '</div>';
+                        html += '<div class="diff-content">';
+                    }
+                    continue;
+                } else if (line.startsWith('index ') || line.startsWith('+++') || line.startsWith('---')) {
+                    continue;
+                } else if (line.startsWith('@@')) {
+                    // Line number info
+                    const match = line.match(/@@\\s*-?(\\d+)(?:,\\d+)?\\s*\\+?(\\d+)(?:,\\d+)?\\s*@@/);
+                    if (match) {
+                        oldLineNum = parseInt(match[1]) - 1;
+                        newLineNum = parseInt(match[2]) - 1;
+                    }
+                    html += '<div class="diff-line" data-line-type="hunk">';
+                    html += '<span class="line-number">...</span>';
+                    html += '<span class="line-content">' + escapeHtml(line) + '</span>';
+                    html += '</div>';
+                    continue;
+                }
+                
+                let lineType = 'context';
+                let displayOldNum = '';
+                let displayNewNum = '';
+                let lineContent = line;
+                
+                if (line.startsWith('+')) {
+                    lineType = 'addition';
+                    newLineNum++;
+                    displayNewNum = newLineNum;
+                    lineContent = line.substring(1);
+                } else if (line.startsWith('-')) {
+                    lineType = 'deletion';
+                    oldLineNum++;
+                    displayOldNum = oldLineNum;
+                    lineContent = line.substring(1);
+                } else {
+                    oldLineNum++;
+                    newLineNum++;
+                    displayOldNum = oldLineNum;
+                    displayNewNum = newLineNum;
+                    lineContent = line.substring(1);
+                }
+                
+                const dataAttrs = currentFile ? ' data-file="' + escapeHtml(currentFile) + '" data-line="' + (displayNewNum || displayOldNum) + '"' : '';
+                html += '<div class="diff-line ' + lineType + '"' + dataAttrs + '>';
+                html += '<span class="line-number">';
+                if (displayOldNum) html += displayOldNum;
+                if (displayNewNum && displayOldNum) html += ' ';
+                if (displayNewNum && displayNewNum !== displayOldNum) html += displayNewNum;
+                html += '</span>';
+                html += '<span class="line-content">' + escapeHtml(lineContent);
+                if (lineType !== 'context') {
+                    html += '<button class="comment-btn" title="Add comment">💬</button>';
+                }
+                html += '</span></div>';
+            }
+            
+            if (html && !html.endsWith('</div>')) {
                 html += '</div></div>';
             }
             
-            html += '</div></div>'; // Close collapsible-content and diff-container
             return html;
         }
+        
+        function toggleCollapse(id) {
+            const element = document.getElementById(id);
+            const header = element.previousElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (element.style.display === 'none') {
+                element.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                element.style.display = 'none';
+                icon.textContent = '▶';
+            }
+        }
+
 
         function updateFileStats() {
             const fileStatsEl = document.getElementById('fileStats');
@@ -697,64 +784,138 @@ app.get('/app.js', (req, res) => {
         }
 
         function showCommentForm(file, line, button) {
+            console.log('showCommentForm called with:', file, line);
+            
             // Remove any existing comment form
             if (activeCommentForm) {
                 activeCommentForm.remove();
                 activeCommentForm = null;
             }
 
-            const diffLine = button.closest('.diff-line');
+            // Find the diff line element
+            const targetLine = button.closest('.diff-line');
+            if (!targetLine) {
+                console.error('Could not find target line for comment form');
+                return;
+            }
+
             const form = document.createElement('div');
             form.className = 'comment-form';
-            form.innerHTML = 
-                '<textarea class="comment-input" placeholder="Add a comment..."></textarea>' +
-                '<div class="comment-actions">' +
-                '<button class="btn btn-primary" onclick="addComment(\\'' + file + '\\', ' + line + ', this)">Add Comment</button>' +
-                '<button class="btn btn-secondary" onclick="cancelComment(this)">Cancel</button>' +
-                '</div>';
             
-            diffLine.parentNode.insertBefore(form, diffLine.nextSibling);
+            const textarea = document.createElement('textarea');
+            textarea.className = 'comment-input';
+            textarea.placeholder = 'Add a comment...';
+            
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = 'comment-actions';
+            
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-primary btn-sm';
+            addBtn.textContent = 'Add Comment';
+            addBtn.onclick = (e) => {
+                e.preventDefault();
+                console.log('Add comment clicked for:', file, line);
+                addComment(file, line, addBtn);
+            };
+            
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn btn-secondary btn-sm';
+            cancelBtn.textContent = 'Cancel';
+            cancelBtn.onclick = (e) => {
+                e.preventDefault();
+                console.log('Cancel clicked');
+                cancelComment(cancelBtn);
+            };
+            
+            actionsDiv.appendChild(addBtn);
+            actionsDiv.appendChild(cancelBtn);
+            form.appendChild(textarea);
+            form.appendChild(actionsDiv);
+            
+            // Insert after the target line
+            targetLine.insertAdjacentElement('afterend', form);
+            
             activeCommentForm = form;
-            form.querySelector('.comment-input').focus();
+            textarea.focus();
+            
+            console.log('Comment form added successfully');
         }
 
         function addComment(file, line, button) {
-            const form = button.closest('.comment-form');
-            const input = form.querySelector('.comment-input');
-            const text = input.value.trim();
+            console.log('addComment called with:', file, line);
             
-            if (!text) return;
+            const form = button.closest('.comment-form');
+            if (!form) {
+                console.error('Could not find comment form');
+                return;
+            }
+            
+            const input = form.querySelector('.comment-input');
+            if (!input) {
+                console.error('Could not find comment input');
+                return;
+            }
+            
+            const text = input.value.trim();
+            console.log('Comment text:', text);
+            
+            if (!text) {
+                alert('Please enter a comment');
+                return;
+            }
             
             comments.push({ file, line, text });
-            form.remove();
-            activeCommentForm = null;
+            console.log('Comment added, total comments:', comments.length);
+            
+            // Remove the form
+            if (activeCommentForm) {
+                activeCommentForm.remove();
+                activeCommentForm = null;
+            }
+            
             updateCommentsList();
         }
 
         function cancelComment(button) {
+            console.log('cancelComment called');
+            
             const form = button.closest('.comment-form');
-            form.remove();
-            activeCommentForm = null;
+            if (form) {
+                form.remove();
+            }
+            
+            if (activeCommentForm) {
+                activeCommentForm.remove();
+                activeCommentForm = null;
+            }
         }
 
         function updateCommentsList() {
             const list = document.getElementById('commentsList');
+            const countEl = document.getElementById('commentsCount');
+            
             if (comments.length === 0) {
                 list.innerHTML = '';
+                list.style.display = 'none';
+                countEl.textContent = '';
                 return;
             }
             
-            let html = '<h4 style="margin: 16px 0 8px 0; color: #f0f6fc;">Comments (' + comments.length + ')</h4>';
+            // Update counter
+            countEl.textContent = comments.length + ' comment' + (comments.length !== 1 ? 's' : '');
             
+            // Build comments HTML
+            let html = '';
             comments.forEach((comment, index) => {
-                html += '<div class="comment-item">';
+                html += '<div class="comment-item" style="margin-bottom: 4px; padding: 6px 8px;">';
                 html += '<div class="comment-meta">' + comment.file + ':' + comment.line + '</div>';
-                html += '<div>' + escapeHtml(comment.text) + '</div>';
-                html += '<button class="btn btn-secondary" style="margin-top: 8px; padding: 4px 8px; font-size: 12px;" onclick="removeComment(' + index + ')">Remove</button>';
+                html += '<div style="font-size: 12px; margin: 2px 0;">' + escapeHtml(comment.text) + '</div>';
+                html += '<button class="btn btn-secondary" style="margin-top: 4px; padding: 2px 6px; font-size: 10px;" onclick="removeComment(' + index + ')">Remove</button>';
                 html += '</div>';
             });
             
             list.innerHTML = html;
+            list.style.display = 'block';
         }
 
         function removeComment(index) {
@@ -763,20 +924,24 @@ app.get('/app.js', (req, res) => {
         }
 
         function attachCommentHandlers() {
-            // Handlers are attached via onclick in the HTML
-        }
-
-        function toggleSection(sectionId, headerElement) {
-            const content = document.getElementById(sectionId);
-            const icon = headerElement.querySelector('.toggle-icon');
+            // Add click handlers for comment buttons
+            const commentButtons = document.querySelectorAll('.comment-btn');
             
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-                icon.textContent = '▼';
-            } else {
-                content.style.display = 'none';
-                icon.textContent = '▶️';
-            }
+            commentButtons.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const line = btn.closest('.diff-line');
+                    if (!line) return;
+                    
+                    const file = line.getAttribute('data-file') || 'unknown';
+                    const lineNum = line.getAttribute('data-line') || '0';
+                    
+                    console.log('Comment button clicked for:', file, lineNum);
+                    showCommentForm(file, lineNum, btn);
+                });
+            });
         }
 
         // Load default commit message
@@ -795,6 +960,8 @@ app.get('/app.js', (req, res) => {
         // Approve/Reject handlers
         document.addEventListener('DOMContentLoaded', function() {
             loadDefaultMessage();
+            
+            // View mode buttons removed as we're back to simple diff view
             
             document.getElementById('approveBtn').addEventListener('click', async () => {
                 const message = document.getElementById('commitMessage').value.trim();
@@ -870,7 +1037,7 @@ app.get('/app.js', (req, res) => {
                             // Show rejection confirmation
                             let message = 'Changes rejected';
                             if (comments.length > 0) {
-                                message += \`\\n\\nYour \${comments.length} comment(s) have been formatted for LLM analysis.\`;
+                                message += '\\nYour ' + comments.length + ' comment(s) have been formatted for LLM analysis.';
                             }
                             
                             alert(message);
@@ -885,7 +1052,8 @@ app.get('/app.js', (req, res) => {
             // Load diff on page load
             loadDiff();
         });
-    `);
+    `;
+    res.send(jsContent);
 });
 
 // Parse command line arguments
