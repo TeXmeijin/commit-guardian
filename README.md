@@ -1,6 +1,6 @@
-# Git Approve - CLI Commit Review Tool
+# Commit Guardian 🛡️
 
-A CLI tool that opens a browser-based diff viewer for reviewing git changes before committing. Inspired by [difit](https://github.com/yoshiko-pg/difit) but adds an approval workflow for safe commits.
+Interactive CLI tool with browser-based diff viewer for reviewing and approving git changes before commit. A safety-focused approach to git commits with approval workflow.
 
 ## ✨ Features
 
@@ -9,65 +9,62 @@ A CLI tool that opens a browser-based diff viewer for reviewing git changes befo
 - ✅ **Approval workflow** - approve to commit or reject to cancel
 - 🚀 **Auto-commit** after approval with custom commit message
 - 📋 **Staged & unstaged changes** support
-- 🙈 **Respects .gitignore** - ignored files are not shown
+- 🛡️ **Pre-commit safety** - prevents accidental commits
+- 🎯 **File status indicators** - see what's added, modified, or deleted
+- 📱 **Responsive interface** - works on all screen sizes
 
 ## 📦 Installation
 
-1. Clone or copy the `git-approve` script to your local machine
-2. Install Node.js dependencies:
-   ```bash
-   npm install
-   ```
-3. Make the script executable:
-   ```bash
-   chmod +x git-approve
-   ```
-4. (Optional) Add to your PATH for global access:
-   ```bash
-   sudo ln -s $(pwd)/git-approve /usr/local/bin/git-approve
-   ```
+### Global Installation (Recommended)
+```bash
+npm install -g commit-guardian
+```
+
+### Use with npx (No installation needed)
+```bash
+npx commit-guardian -m "Your commit message"
+```
 
 ## 🚀 Usage
 
 Navigate to any git repository and run:
 
 ```bash
-./git-approve
+commit-guardian -m "Your commit message"
 ```
 
-Or if installed globally:
+Alternative command (both work identically):
 ```bash
-git-approve
+git-approve -m "Your commit message"
 ```
 
 ### Command Line Options
 
 ```bash
-# Basic usage
-git-approve
-
-# With default commit message
-git-approve "Add new feature"
+# Basic usage with commit message (required)
+commit-guardian -m "Add new feature"
 git-approve -m "Fix login bug"
-git-approve --message "Update documentation"
+
+# Long form
+commit-guardian --message "Update documentation"
 
 # Show help
-git-approve --help
+commit-guardian --help
 ```
 
 ### Workflow
 
-1. **Run the command** in your git repository
-2. **Browser opens** automatically showing your changes
-3. **Review diffs** with GitHub-like interface
-4. **Add comments** (optional) by clicking the 💬 button on any line
-5. **Write commit message** in the text area
+1. **Stage your changes** using `git add`
+2. **Run commit-guardian** with your commit message
+3. **Browser opens** automatically showing your changes  
+4. **Review diffs** with GitHub-like interface
+5. **Add comments** (optional) by clicking the 💬 button on any line
 6. **Click "✅ Approve & Commit"** to commit or "❌ Reject" to cancel
 
 ### Example Output
 
 ```
-🔍 Git Approve - Review changes before commit
+🔍 Commit Guardian - Review changes before commit
 
 📊 Changes detected:
   • Staged changes found
@@ -95,40 +92,50 @@ After approval:
 🎉 Successfully committed changes!
 ```
 
-## 🔧 Configuration
-
-The tool runs on port 3456 by default. If you need to change this, edit the `PORT` constant in the script.
-
 ## ⚠️ Requirements
 
 - Node.js (v14 or higher)
 - Git repository
 - Modern web browser
 
-## 🆚 Differences from difit
+## 🎯 Design Philosophy
 
-| Feature | difit | git-approve |
-|---------|-------|-------------|
-| View diffs | ✅ | ✅ |
-| Add comments | ✅ | ✅ |
-| Browser interface | ✅ | ✅ |
-| **Approval workflow** | ❌ | ✅ |
-| **Auto-commit on approve** | ❌ | ✅ |
-| **Pre-commit safety** | ❌ | ✅ |
-| **Staged/unstaged combo** | ✅ | ✅ |
+Commit Guardian focuses on **safety and simplicity** in the git commit process. While there are many excellent diff review tools available, our goal is to provide a lightweight, focused solution that:
+
+- **Prevents accidental commits** through mandatory review
+- **Keeps it simple** with essential features only
+- **Integrates seamlessly** with existing git workflows
+- **Requires minimal setup** - just npm install and go
+
+## 🙏 Inspiration
+
+This tool was inspired by the excellent [difit](https://github.com/yoshiko-pg/difit) project. Difit offers a comprehensive feature set and beautiful UI for diff viewing. Commit Guardian takes a different approach, focusing specifically on the approval workflow and commit safety aspect.
+
+**When to use difit:** If you want a feature-rich diff viewer with advanced UI capabilities and comprehensive file management.
+
+**When to use commit-guardian:** If you want a simple, safety-focused commit approval workflow that prevents accidental commits.
+
+Both tools serve different needs in the developer toolkit! 🤝
 
 ## 🔒 Safety Features
 
-- Only shows changes that would be committed
-- Requires explicit approval to commit
-- Shows both staged and unstaged changes
-- Respects .gitignore automatically
+- Requires explicit approval before any commit
+- Shows both staged and unstaged changes for full context
+- Respects .gitignore automatically  
 - Comments are preserved for review
+- Server auto-shuts down after commit for security
+- No auto-commit on accidental actions
 
 ## 🤝 Contributing
 
-Feel free to submit issues and enhancement requests!
+Found a bug or have a feature request? Please check our [GitHub Issues](https://github.com/TeXmeijin/commit-guardian/issues).
+
+Pull requests are welcome! For major changes, please open an issue first.
 
 ## 📄 License
 
 MIT License - feel free to use and modify as needed.
+
+---
+
+**Happy Safe Committing!** 🛡️✨

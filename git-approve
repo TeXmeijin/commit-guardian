@@ -189,7 +189,7 @@ app.get('/', (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Git Approve - Review Changes</title>
+    <title>Commit Guardian - Review Changes</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         * {
@@ -500,7 +500,7 @@ app.get('/', (req, res) => {
 <body class="bg-gray-900 text-gray-100">
     <div class="container">
         <div class="header">
-            <h1 class="title">🔍 Git Approve - Review Changes</h1>
+            <h1 class="title">🛡️ Commit Guardian - Review Changes</h1>
             <div id="fileStats" class="text-sm text-gray-400"></div>
         </div>
         
@@ -927,18 +927,21 @@ function parseArgs() {
 
 function showHelp() {
     console.log(`
-🔍 Git Approve - Review changes before commit
+🛡️ Commit Guardian - Review changes before commit
 
-Usage: git-approve -m <commit-message> [options]
+Usage: commit-guardian -m <commit-message> [options]
 
 Options:
   -m, --message <msg>    Commit message (REQUIRED)
   -h, --help            Show this help message
 
 Examples:
-  git-approve -m "Add new feature"
-  git-approve --message "Fix bug in login"
-  git-approve -m "Update documentation"
+  commit-guardian -m "Add new feature"
+  commit-guardian --message "Fix bug in login"  
+  commit-guardian -m "Update documentation"
+  
+  # Alternative (both commands work identically):
+  git-approve -m "Your commit message"
 
 Features:
   • GitHub-style diff viewer in browser
@@ -961,7 +964,7 @@ function main() {
     // Check if commit message is provided (required)
     if (!options.message || options.message.trim() === '') {
         console.error('❌ Error: Commit message is required');
-        console.error('Usage: git-approve -m "commit message"');
+        console.error('Usage: commit-guardian -m "commit message"');
         console.error('Use --help for more information');
         process.exit(1);
     }
@@ -969,7 +972,7 @@ function main() {
     // Set commit message
     defaultCommitMessage = options.message.trim();
     
-    console.log('🔍 Git Approve - Review changes before commit\n');
+    console.log('🛡️ Commit Guardian - Review changes before commit\n');
     
     // Check if we're in a git repository
     if (!checkGitRepo()) {
