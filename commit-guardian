@@ -144,12 +144,19 @@ app.post('/api/close', (req, res) => {
 });
 
 app.post('/api/reject', (req, res) => {
-    const { fileComments } = req.body;
+    const { rejectReason, fileComments } = req.body;
     
     approvalStatus = 'rejected';
     comments = fileComments || [];
     
     console.log('\n❌ Changes rejected');
+    
+    if (rejectReason) {
+        console.log('\n📝 Rejection reason:');
+        console.log('='.repeat(50));
+        console.log(rejectReason);
+        console.log('');
+    }
     
     if (comments.length > 0) {
         console.log('\n📝 Review comments for LLM analysis:');
@@ -164,6 +171,9 @@ app.post('/api/reject', (req, res) => {
         // Format for LLM
         console.log('\n🤖 LLM Analysis Format:');
         console.log('='.repeat(30));
+        if (rejectReason) {
+            console.log(`Reject Reason: ${rejectReason}`);
+        }
         const analysisText = comments.map(comment => 
             `${comment.file}:${comment.line} - ${comment.text}`
         ).join('\n');
@@ -421,8 +431,13 @@ app.get('/', (req, res) => {
             color: #fff;
         }
         
-        .btn-danger:hover {
+        .btn-danger:hover:not(:disabled) {
             background: #f85149;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
         .comments-list {
@@ -558,10 +573,16 @@ app.get('/', (req, res) => {
                     placeholder="Enter your commit message..."
                     required
                 ></textarea>
+                <span class="approve-title">Reject Reason:</span>
+                <textarea 
+                    id="rejectReason" 
+                    class="commit-message" 
+                    placeholder="Enter reason for rejection..."
+                ></textarea>
                 <span id="commentsCount" class="comments-summary"></span>
                 <div class="approve-actions">
                     <button id="approveBtn" class="btn btn-success">✅ Approve</button>
-                    <button id="rejectBtn" class="btn btn-danger">❌ Reject</button>
+                    <button id="rejectBtn" class="btn btn-danger" disabled>❌ Reject</button>
                 </div>
             </div>
             <div id="commentsList" class="comments-list" style="display: none;"></div>
@@ -961,6 +982,27 @@ app.get('/app.js', (req, res) => {
         document.addEventListener('DOMContentLoaded', function() {
             loadDefaultMessage();
             
+            // Handle reject reason textarea and button states
+            const rejectReasonTextarea = document.getElementById('rejectReason');
+            const rejectBtn = document.getElementById('rejectBtn');
+            const approveBtn = document.getElementById('approveBtn');
+            
+            // Clear reject reason when approve button is focused
+            approveBtn.addEventListener('focus', () => {
+                if (rejectReasonTextarea.value.trim()) {
+                    rejectReasonTextarea.value = '';
+                    rejectBtn.disabled = true;
+                    approveBtn.disabled = false;
+                }
+            });
+            
+            // Enable/disable buttons based on textarea content
+            rejectReasonTextarea.addEventListener('input', () => {
+                const hasReason = rejectReasonTextarea.value.trim().length > 0;
+                rejectBtn.disabled = !hasReason;
+                approveBtn.disabled = hasReason; // Disable approve when reject reason exists
+            });
+            
             // View mode buttons removed as we're back to simple diff view
             
             document.getElementById('approveBtn').addEventListener('click', async () => {
@@ -1013,9 +1055,18 @@ app.get('/app.js', (req, res) => {
                 }
             });
 
-            document.getElementById('rejectBtn').addEventListener('click', async () => {
+            document.getElementById('rejectBtn').addEventListener('click', async (e) => {
+                const rejectReason = rejectReasonTextarea.value.trim();
+                
+                if (!rejectReason) {
+                    alert('Please enter a reason for rejection');
+                    rejectReasonTextarea.focus();
+                    return;
+                }
+                
                 if (confirm('Are you sure you want to reject these changes?')) {
                     console.log('Reject button clicked');
+                    console.log('Reject reason:', rejectReason);
                     console.log('Comments to send:', comments);
                     
                     try {
@@ -1024,6 +1075,7 @@ app.get('/app.js', (req, res) => {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({ 
+                                rejectReason: rejectReason,
                                 fileComments: comments 
                             })
                         });
@@ -1032,8 +1084,6 @@ app.get('/app.js', (req, res) => {
                         console.log('Reject response ok:', response.ok);
                         
                         if (response.ok) {
-                            // Status element was removed, so skip status updates
-                            
                             // Show rejection confirmation
                             let message = 'Changes rejected';
                             if (comments.length > 0) {
