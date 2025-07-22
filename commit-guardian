@@ -941,7 +941,7 @@ Examples:
   commit-guardian -m "Update documentation"
   
   # Alternative (both commands work identically):
-  git-approve -m "Your commit message"
+  commit-guardian -m "Your commit message"
 
 Features:
   • GitHub-style diff viewer in browser

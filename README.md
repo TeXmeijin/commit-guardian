@@ -1,59 +1,102 @@
 # Commit Guardian 🛡️
 
-Interactive CLI tool with browser-based diff viewer for reviewing and approving git changes before commit. A safety-focused approach to git commits with approval workflow.
+**The Perfect Claude Code Companion for Safe Commits**
+
+Interactive CLI tool designed specifically for **Claude Code** users who want to review changes before committing. Never accidentally commit code again - approve every change through a beautiful browser interface.
+
+## 🎯 Why Commit Guardian?
+
+**Built for Claude Code users** who want to maintain control over their commits while leveraging AI assistance. This tool creates the perfect workflow:
+
+1. **Claude Code makes changes** to your codebase
+2. **You stay in control** of what gets committed  
+3. **Review everything** in a GitHub-style diff viewer
+4. **Approve or reject** with confidence
+
+## 🚀 Perfect Claude Code Integration
+
+### Step 1: Configure Claude Code Settings
+
+Add to your `~/.claude/settings.local.json`:
+
+```json
+{
+  "tools": {
+    "deny": [
+      "Bash(git commit:*)"
+    ],
+    "allow": [
+      "Bash(npx commit-guardian *)"
+    ]
+  }
+}
+```
+
+This prevents Claude Code from making direct commits while allowing it to use Commit Guardian.
+
+### Step 2: Usage with Claude Code
+
+Simply tell Claude Code:
+```
+"Please run npx commit-guardian with an appropriate commit message"
+```
+
+Or add this to your `CLAUDE.md` for automatic usage:
+```markdown
+When committing changes, always use:
+npx commit-guardian -m "descriptive commit message"
+```
+
+### Step 3: The Magic Happens
+
+1. **Claude Code runs** `npx commit-guardian -m "your message"`
+2. **Browser opens automatically** with your diff
+3. **You review** the changes in GitHub-style interface
+4. **Approve**: Browser closes, control returns to Claude Code, commit is made
+5. **Reject**: Browser closes, control returns to Claude Code, no commit made
 
 ## ✨ Features
 
 - 🔍 **GitHub-style diff viewer** in browser
-- 💬 **Line-by-line comments** on changes
+- 💬 **Line-by-line comments** on changes  
 - ✅ **Approval workflow** - approve to commit or reject to cancel
 - 🚀 **Auto-commit** after approval with custom commit message
 - 📋 **Staged & unstaged changes** support
 - 🛡️ **Pre-commit safety** - prevents accidental commits
 - 🎯 **File status indicators** - see what's added, modified, or deleted
 - 📱 **Responsive interface** - works on all screen sizes
+- 🤖 **Claude Code optimized** - seamless integration workflow
 
 ## 📦 Installation
 
-### Global Installation (Recommended)
+### Option 1: Global Installation (Recommended)
 ```bash
 npm install -g commit-guardian
 ```
 
-### Use with npx (No installation needed)
+### Option 2: Use with npx (No installation needed)
 ```bash
 npx commit-guardian -m "Your commit message"
 ```
 
-## 🚀 Usage
+## 🚀 Usage Examples
 
-Navigate to any git repository and run:
-
+### Basic Usage
 ```bash
-commit-guardian -m "Your commit message"
-```
-
-Alternative command (both work identically):
-```bash
-git-approve -m "Your commit message"
-```
-
-### Command Line Options
-
-```bash
-# Basic usage with commit message (required)
 commit-guardian -m "Add new feature"
-git-approve -m "Fix login bug"
-
-# Long form
+commit-guardian -m "Fix login bug" 
 commit-guardian --message "Update documentation"
-
-# Show help
-commit-guardian --help
 ```
 
-### Workflow
+### With Claude Code
+```bash
+# Claude Code will run this for you:
+npx commit-guardian -m "Implement user authentication system"
+```
 
+## 📋 Typical Workflow
+
+### Manual Usage
 1. **Stage your changes** using `git add`
 2. **Run commit-guardian** with your commit message
 3. **Browser opens** automatically showing your changes  
@@ -61,22 +104,29 @@ commit-guardian --help
 5. **Add comments** (optional) by clicking the 💬 button on any line
 6. **Click "✅ Approve & Commit"** to commit or "❌ Reject" to cancel
 
-### Example Output
+### Claude Code Integration Workflow  
+1. **Ask Claude Code** to make changes to your project
+2. **Tell Claude Code** to commit with commit-guardian
+3. **Review changes** when browser opens automatically
+4. **Approve or reject** - control returns to Claude Code automatically
+5. **Continue working** with Claude Code seamlessly
+
+## 🎮 Example Session
 
 ```
 🔍 Commit Guardian - Review changes before commit
 
 📊 Changes detected:
-  • Staged changes found
-  • Unstaged changes found
-📝 Default commit message: "Add new feature"
+  • 3 files modified
+  • 2 files added
+📝 Commit message: "Implement user authentication system"
 
 🚀 Review server started at http://localhost:3456
-🌐 Opening browser...
+🌐 Opening browser for review...
 
-⏳ Waiting for your review...
+⏳ Waiting for your approval...
    • Review changes in browser
-   • Add comments if needed
+   • Add comments if needed  
    • Approve to commit or reject to cancel
 
 Press Ctrl+C to cancel
@@ -85,10 +135,10 @@ Press Ctrl+C to cancel
 After approval:
 ```
 ✅ Changes approved!
-📝 Commit message: Add new feature with validation
+📝 Commit message: Implement user authentication system
 💬 Comments:
-   1. src/app.js:42 - Consider using const instead of let
-   2. src/app.js:58 - Add error handling here
+   1. src/auth.js:42 - Good error handling implementation
+   2. src/login.js:15 - Consider adding rate limiting
 🎉 Successfully committed changes!
 ```
 
@@ -97,34 +147,63 @@ After approval:
 - Node.js (v14 or higher)
 - Git repository
 - Modern web browser
+- Claude Code (for optimal experience)
 
 ## 🎯 Design Philosophy
 
-Commit Guardian focuses on **safety and simplicity** in the git commit process. While there are many excellent diff review tools available, our goal is to provide a lightweight, focused solution that:
+Commit Guardian was built specifically for **Claude Code users** who want to:
 
-- **Prevents accidental commits** through mandatory review
-- **Keeps it simple** with essential features only
-- **Integrates seamlessly** with existing git workflows
-- **Requires minimal setup** - just npm install and go
+- **Maintain control** over what gets committed to their repository
+- **Review AI-generated changes** before they become permanent
+- **Prevent accidental commits** through mandatory approval workflow  
+- **Keep development velocity high** while ensuring code quality
+- **Stay in the flow** with seamless tool integration
+
+## 💡 Pro Tips
+
+### For Claude Code Users
+
+1. **Add to CLAUDE.md**: Include commit-guardian usage instructions in your project's CLAUDE.md
+2. **Use descriptive messages**: Let Claude Code suggest commit messages based on the changes
+3. **Review everything**: Even AI-generated code should be reviewed before committing
+4. **Comment on changes**: Use the comment feature to note concerns or improvements
+
+### Configuration Tip
+```json
+// ~/.claude/settings.local.json
+{
+  "tools": {
+    "deny": ["Bash(git commit:*)"],
+    "allow": ["Bash(npx commit-guardian *)"] 
+  }
+}
+```
+
+## 🤖 Claude Code Best Practices
+
+When working with Claude Code:
+
+```markdown
+# In your CLAUDE.md or prompts:
+
+When making commits, always use:
+`npx commit-guardian -m "descriptive message"`
+
+Never use `git commit` directly.
+```
 
 ## 🙏 Inspiration
 
-This tool was inspired by the excellent [difit](https://github.com/yoshiko-pg/difit) project. Difit offers a comprehensive feature set and beautiful UI for diff viewing. Commit Guardian takes a different approach, focusing specifically on the approval workflow and commit safety aspect.
-
-**When to use difit:** If you want a feature-rich diff viewer with advanced UI capabilities and comprehensive file management.
-
-**When to use commit-guardian:** If you want a simple, safety-focused commit approval workflow that prevents accidental commits.
-
-Both tools serve different needs in the developer toolkit! 🤝
+This tool was inspired by the excellent [difit](https://github.com/yoshiko-pg/difit) project, but designed specifically for Claude Code integration and approval workflows.
 
 ## 🔒 Safety Features
 
-- Requires explicit approval before any commit
-- Shows both staged and unstaged changes for full context
-- Respects .gitignore automatically  
-- Comments are preserved for review
-- Server auto-shuts down after commit for security
-- No auto-commit on accidental actions
+- **Explicit approval required** - no accidental commits
+- **Full change visibility** - shows staged and unstaged changes
+- **Respects .gitignore** automatically
+- **Comments preserved** for review history  
+- **Auto-shutdown** after commit for security
+- **Claude Code integration** prevents AI from committing without review
 
 ## 🤝 Contributing
 
@@ -138,4 +217,4 @@ MIT License - feel free to use and modify as needed.
 
 ---
 
-**Happy Safe Committing!** 🛡️✨
+**Happy Safe Committing with Claude Code!** 🛡️🤖✨

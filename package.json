@@ -2,16 +2,15 @@
   "name": "commit-guardian",
   "version": "1.0.2",
   "description": "Interactive CLI tool with browser-based GitHub-style diff viewer for reviewing and approving git changes before commit. Features approval workflow, line comments, and safe commit protection.",
-  "main": "git-approve",
+  "main": "commit-guardian",
   "bin": {
-    "git-approve": "./git-approve",
-    "commit-guardian": "./git-approve"
+    "commit-guardian": "./commit-guardian"
   },
   "scripts": {
-    "postinstall": "chmod +x ./git-approve"
+    "postinstall": "chmod +x ./commit-guardian"
   },
   "files": [
-    "git-approve",
+    "commit-guardian",
     "README.md",
     "package.json"
   ],
