@@ -1,0 +1,25 @@
+# Development files
+.claude/
+node_modules/
+.git/
+.gitignore
+
+# Test files
+test.txt
+gitfile.txt
+
+# Other scripts (only include git-approve)
+safe-rm
+
+# Lock files (package-lock.json should not be published)
+package-lock.json
+
+# Documentation that's not needed in npm package
+*.md
+!README.md
+
+# Logs and temporary files
+*.log
+.DS_Store
+.vscode/
+.idea/

@@ -1,0 +1,1067 @@
+#!/usr/bin/env node
+
+const express = require('express');
+const { execSync, spawn } = require('child_process');
+const path = require('path');
+const fs = require('fs');
+const open = require('open');
+
+const app = express();
+const PORT = 3456;
+
+let server;
+let approvalStatus = 'pending'; // 'pending', 'approved', 'rejected'
+let commitMessage = '';
+let comments = [];
+let defaultCommitMessage = '';
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Check if we're in a git repository
+function checkGitRepo() {
+    try {
+        execSync('git rev-parse --git-dir', { stdio: 'ignore' });
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Get git diff data
+function getDiffData() {
+    try {
+        // Get staged changes
+        const staged = execSync('git diff --cached', { encoding: 'utf8' });
+        
+        // Get unstaged changes
+        const unstaged = execSync('git diff', { encoding: 'utf8' });
+        
+        // Get status to show file states
+        const status = execSync('git status --porcelain', { encoding: 'utf8' });
+        
+        // Parse status to get file info
+        const files = status.split('\n')
+            .filter(line => line.trim())
+            .map(line => {
+                const staged = line[0] !== ' ' && line[0] !== '?';
+                const unstaged = line[1] !== ' ';
+                const filename = line.slice(3);
+                return { filename, staged, unstaged };
+            });
+
+        const stagedFiles = files.filter(f => f.staged);
+        const unstagedFiles = files.filter(f => f.unstaged);
+        
+        return {
+            staged,
+            unstaged,
+            files,
+            stagedFiles,
+            unstagedFiles,
+            hasChanges: staged.length > 0 || unstaged.length > 0,
+            hasStagedChanges: staged.length > 0
+        };
+    } catch (error) {
+        console.error('Error getting git diff:', error.message);
+        return { staged: '', unstaged: '', files: [], hasChanges: false };
+    }
+}
+
+
+// API Routes
+app.get('/api/diff', (req, res) => {
+    const diffData = getDiffData();
+    res.json(diffData);
+});
+
+app.get('/api/status', (req, res) => {
+    res.json({ 
+        status: approvalStatus,
+        commitMessage: commitMessage,
+        comments: comments,
+        defaultCommitMessage: defaultCommitMessage
+    });
+});
+
+app.post('/api/approve', (req, res) => {
+    console.log('\\n🔄 Approval request received');
+    console.log('Request body:', req.body);
+    
+    const { message, fileComments } = req.body;
+    
+    if (!message || message.trim() === '') {
+        console.log('❌ No commit message provided');
+        return res.status(400).json({ error: 'Commit message is required' });
+    }
+    
+    commitMessage = message.trim();
+    comments = fileComments || [];
+    approvalStatus = 'approved';
+    
+    console.log('\n✅ Changes approved!');
+    console.log(`📝 Commit message: ${commitMessage}`);
+    
+    if (comments.length > 0) {
+        console.log('💬 Comments:');
+        comments.forEach((comment, index) => {
+            console.log(`   ${index + 1}. ${comment.file}:${comment.line} - ${comment.text}`);
+        });
+    }
+    
+    // Perform git commit (staged files only)
+    try {
+        console.log('🚀 Executing git commit...');
+        console.log(`Command: git commit -m "${commitMessage}"`);
+        
+        execSync(`git commit -m "${commitMessage}"`, { stdio: 'inherit' });
+        console.log('🎉 Successfully committed changes!');
+        
+        console.log('📤 Sending success response to browser...');
+        res.json({ success: true, message: 'Changes committed successfully', autoClose: true });
+        
+        // Close server after successful commit (increased delay)
+        setTimeout(() => {
+            console.log('🚪 Shutting down server after successful commit...');
+            process.exit(0);
+        }, 5000);
+        
+    } catch (error) {
+        console.error('❌ Error committing changes:', error.message);
+        console.error('❌ Error details:', error);
+        res.status(500).json({ error: `Failed to commit changes: ${error.message}` });
+        approvalStatus = 'pending';
+    }
+});
+
+app.post('/api/close', (req, res) => {
+    console.log('\n👋 Browser tab closed - shutting down server...');
+    res.json({ success: true });
+    
+    setTimeout(() => {
+        process.exit(0);
+    }, 500);
+});
+
+app.post('/api/reject', (req, res) => {
+    const { fileComments } = req.body;
+    
+    approvalStatus = 'rejected';
+    comments = fileComments || [];
+    
+    console.log('\n❌ Changes rejected');
+    
+    if (comments.length > 0) {
+        console.log('\n📝 Review comments for LLM analysis:');
+        console.log('='.repeat(50));
+        
+        comments.forEach((comment, index) => {
+            console.log(`${index + 1}. File: ${comment.file}:${comment.line}`);
+            console.log(`   Comment: ${comment.text}`);
+            console.log('');
+        });
+        
+        // Format for LLM
+        console.log('\n🤖 LLM Analysis Format:');
+        console.log('='.repeat(30));
+        const analysisText = comments.map(comment => 
+            `${comment.file}:${comment.line} - ${comment.text}`
+        ).join('\n');
+        console.log(analysisText);
+    } else {
+        console.log('ℹ️  No comments provided');
+    }
+    
+    res.json({ success: true });
+    
+    // Longer delay for reject to ensure response is received
+    setTimeout(() => {
+        console.log('🚪 Shutting down server after rejection...');
+        process.exit(1);
+    }, 5000);
+});
+
+// Serve the HTML interface
+app.get('/', (req, res) => {
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Git Approve - Review Changes</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            line-height: 1.5;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #30363d;
+        }
+        
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #f0f6fc;
+        }
+        
+        .status {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        .status.pending {
+            background: #1f2937;
+            color: #fbbf24;
+            border: 1px solid #374151;
+        }
+        
+        .diff-container {
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            background: #161b22;
+            margin-bottom: 24px;
+        }
+        
+        .file-header {
+            padding: 8px 16px;
+            background: #21262d;
+            border-bottom: 1px solid #30363d;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .collapsible-header {
+            cursor: pointer;
+            user-select: none;
+            transition: background-color 0.2s;
+        }
+        
+        .collapsible-header:hover {
+            background: #2d333b;
+        }
+        
+        .toggle-icon {
+            display: inline-block;
+            width: 16px;
+        }
+        
+        .individual-file-header {
+            padding: 6px 12px;
+            background: #1c2128;
+            border-bottom: 1px solid #30363d;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 12px;
+            font-weight: 500;
+            color: #f0f6fc;
+        }
+        
+        .file-diff {
+            margin-bottom: 16px;
+            border: 1px solid #30363d;
+            border-radius: 4px;
+            background: #161b22;
+        }
+        
+        .diff-content {
+            overflow-x: auto;
+        }
+        
+        .diff-line {
+            display: flex;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 14px;
+            line-height: 1.45;
+            position: relative;
+        }
+        
+        .line-number {
+            padding: 0 8px;
+            background: #161b22;
+            color: #656d76;
+            min-width: 60px;
+            text-align: right;
+            user-select: none;
+            border-right: 1px solid #30363d;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        }
+        
+        .line-content {
+            padding: 0 8px;
+            flex: 1;
+            white-space: pre;
+            position: relative;
+            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+        }
+        
+        .diff-line.addition {
+            background: #0d4429;
+        }
+        
+        .diff-line.deletion {
+            background: #5a1e1e;
+        }
+        
+        .diff-line.addition .line-content {
+            background: #0d4429;
+        }
+        
+        .diff-line.deletion .line-content {
+            background: #5a1e1e;
+        }
+        
+        .diff-line:hover {
+            background: #1c2128 !important;
+        }
+        
+        .diff-line:hover .line-content {
+            background: #1c2128 !important;
+        }
+        
+        .comment-btn {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #238636;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 12px;
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .diff-line:hover .comment-btn {
+            opacity: 1;
+        }
+        
+        .comment-form {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            margin: 8px 16px;
+            padding: 16px;
+        }
+        
+        .comment-input {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            padding: 8px 12px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .comment-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .btn {
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: 1px solid;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        
+        .btn-primary {
+            background: #238636;
+            border-color: #238636;
+            color: #fff;
+        }
+        
+        .btn-primary:hover {
+            background: #2ea043;
+        }
+        
+        .btn-secondary {
+            background: transparent;
+            border-color: #30363d;
+            color: #c9d1d9;
+        }
+        
+        .btn-secondary:hover {
+            background: #21262d;
+        }
+        
+        .approve-section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 24px;
+            margin-top: 24px;
+        }
+        
+        .approve-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #f0f6fc;
+        }
+        
+        .commit-message {
+            width: 100%;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            color: #c9d1d9;
+            padding: 12px;
+            font-family: inherit;
+            font-size: 14px;
+            margin-bottom: 16px;
+            min-height: 80px;
+            resize: vertical;
+        }
+        
+        .approve-actions {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .btn-success {
+            background: #238636;
+            border-color: #238636;
+            color: #fff;
+            padding: 12px 24px;
+            font-size: 16px;
+        }
+        
+        .btn-danger {
+            background: #da3633;
+            border-color: #da3633;
+            color: #fff;
+            padding: 12px 24px;
+            font-size: 16px;
+        }
+        
+        .comments-list {
+            margin-top: 16px;
+        }
+        
+        .comment-item {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        
+        .comment-meta {
+            font-size: 12px;
+            color: #656d76;
+            margin-bottom: 4px;
+        }
+        
+        .no-changes {
+            text-align: center;
+            padding: 48px;
+            color: #656d76;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 48px;
+            color: #656d76;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-100">
+    <div class="container">
+        <div class="header">
+            <h1 class="title">🔍 Git Approve - Review Changes</h1>
+            <div id="fileStats" class="text-sm text-gray-400"></div>
+        </div>
+        
+        <div id="content">
+            <div class="loading">Loading changes...</div>
+        </div>
+        
+        <div class="approve-section">
+            <h3 class="approve-title">📝 Commit Message</h3>
+            <textarea 
+                id="commitMessage" 
+                class="commit-message" 
+                placeholder="Enter your commit message here..."
+                required
+            ></textarea>
+            
+            <div id="commentsList" class="comments-list"></div>
+            
+            <div class="approve-actions flex gap-3">
+                <button id="approveBtn" class="btn btn-success bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-md font-medium transition-colors">✅ Approve & Commit</button>
+                <button id="rejectBtn" class="btn btn-danger bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-md font-medium transition-colors">❌ Reject</button>
+            </div>
+        </div>
+    </div>
+    <script src="/app.js"></script>
+</body>
+</html>`;
+    
+    res.send(htmlContent);
+});
+
+// Serve JavaScript separately to avoid template literal conflicts
+app.get('/app.js', (req, res) => {
+    res.type('application/javascript');
+    res.send(`
+        let diffData = null;
+        let comments = [];
+        let activeCommentForm = null;
+
+        // Load initial data
+        async function loadDiff() {
+            try {
+                const response = await fetch('/api/diff');
+                diffData = await response.json();
+                renderDiff();
+            } catch (error) {
+                console.error('Error loading diff:', error);
+                document.getElementById('content').innerHTML = '<div class="loading">Error loading changes</div>';
+            }
+        }
+
+        function renderDiff() {
+            const content = document.getElementById('content');
+            
+            if (!diffData.hasChanges) {
+                content.innerHTML = '<div class="no-changes">No changes to review</div>';
+                updateFileStats();
+                return;
+            }
+
+            let html = '';
+            
+            if (diffData.staged) {
+                html += renderDiffSection('Staged Changes', diffData.staged, 'staged', false);
+            }
+            
+            if (diffData.unstaged) {
+                html += renderDiffSection('Unstaged Changes', diffData.unstaged, 'unstaged', true);
+            }
+            
+            content.innerHTML = html;
+            updateFileStats();
+            attachCommentHandlers();
+        }
+
+        function renderDiffSection(title, diff, type, collapsed = false) {
+            if (!diff.trim()) return '';
+            
+            const lines = diff.split('\\n');
+            const sectionId = 'section-' + type;
+            const isCollapsed = collapsed ? 'style="display: none;"' : '';
+            const toggleIcon = collapsed ? '▶️' : '▼';
+            
+            let html = '<div class="diff-container">';
+            html += '<div class="file-header collapsible-header" onclick="toggleSection(\\'' + sectionId + '\\', this)">';
+            html += '<span class="toggle-icon">' + toggleIcon + '</span> ' + title;
+            html += '</div>';
+            html += '<div id="' + sectionId + '" class="collapsible-content" ' + isCollapsed + '>';
+            
+            let currentFile = '';
+            let fileStatus = '';
+            let lineNumber = 0;
+            let fileStarted = false;
+            
+            for (const line of lines) {
+                if (line.startsWith('diff --git')) {
+                    const match = line.match(/diff --git a\\/(.*) b\\/(.*)/);  
+                    fileStatus = 'M'; // Default to modified
+                    if (match) {
+                        // Close previous file section if exists
+                        if (fileStarted) {
+                            html += '</div></div>';
+                        }
+                        
+                        currentFile = match[1];
+                        // Start new file section
+                        html += '<div class="file-diff">';
+                        html += '<div class="individual-file-header font-mono">' + getStatusIcon(fileStatus) + ' ' + currentFile + '</div>';
+                        html += '<div class="diff-content">';
+                        fileStarted = true;
+                    }
+                } else if (line.startsWith('new file mode')) {
+                    fileStatus = 'A'; // Added file
+                    // Skip metadata line
+                } else if (line.startsWith('deleted file mode')) {
+                    fileStatus = 'D'; // Deleted file
+                    // Skip metadata line
+                } else if (line.startsWith('index ')) {
+                    // Skip metadata line
+                } else if (line.startsWith('@@')) {
+                    const match = line.match(/@@ -(\\d+),?\\d* \\+(\\d+),?\\d* @@/);
+                    if (match) {
+                        lineNumber = parseInt(match[2]);
+                    }
+                    // Skip @@ line - it's metadata
+                } else if (line.startsWith('+') && !line.startsWith('+++')) {
+                    html += '<div class="diff-line addition font-mono" data-file="' + currentFile + '" data-line="' + lineNumber + '">';
+                    html += '<div class="line-number font-mono">' + lineNumber + '</div>';
+                    html += '<div class="line-content font-mono">' + escapeHtml(line);
+                    html += '<button class="comment-btn" onclick="showCommentForm(\\'' + currentFile + '\\', ' + lineNumber + ', this)">💬</button>';
+                    html += '</div></div>';
+                    lineNumber++;
+                } else if (line.startsWith('-') && !line.startsWith('---')) {
+                    html += '<div class="diff-line deletion font-mono" data-file="' + currentFile + '" data-line="' + lineNumber + '">';
+                    html += '<div class="line-number font-mono">-</div>';
+                    html += '<div class="line-content font-mono">' + escapeHtml(line);
+                    html += '<button class="comment-btn" onclick="showCommentForm(\\'' + currentFile + '\\', ' + lineNumber + ', this)">💬</button>';
+                    html += '</div></div>';
+                } else if (line.trim() && !line.startsWith('index') && !line.startsWith('+++') && !line.startsWith('---')) {
+                    html += '<div class="diff-line context font-mono" data-file="' + currentFile + '" data-line="' + lineNumber + '">';
+                    html += '<div class="line-number font-mono">' + lineNumber + '</div>';
+                    html += '<div class="line-content font-mono">' + escapeHtml(line);
+                    html += '<button class="comment-btn" onclick="showCommentForm(\\'' + currentFile + '\\', ' + lineNumber + ', this)">💬</button>';
+                    html += '</div></div>';
+                    lineNumber++;
+                }
+            }
+            
+            // Close final file section if exists
+            if (fileStarted) {
+                html += '</div></div>';
+            }
+            
+            html += '</div></div>'; // Close collapsible-content and diff-container
+            return html;
+        }
+
+        function updateFileStats() {
+            const fileStatsEl = document.getElementById('fileStats');
+            if (!diffData || !diffData.stagedFiles) {
+                fileStatsEl.innerHTML = '';
+                return;
+            }
+            
+            const stagedCount = diffData.stagedFiles.length;
+            const unstagedCount = diffData.unstagedFiles ? diffData.unstagedFiles.length : 0;
+            
+            let html = '';
+            if (stagedCount > 0) {
+                html += '<span class=\"text-green-400\">' + stagedCount + ' staged</span>';
+            }
+            if (unstagedCount > 0) {
+                if (html) html += ', ';
+                html += '<span class=\"text-yellow-400\">' + unstagedCount + ' unstaged</span>';
+            }
+            
+            fileStatsEl.innerHTML = html;
+        }
+
+        function getStatusIcon(status) {
+            switch (status) {
+                case 'A': return '<span style="color: #238636;">+</span>'; // Added (green)
+                case 'D': return '<span style="color: #da3633;">−</span>'; // Deleted (red)
+                case 'M': return '<span style="color: #bf8700;">●</span>'; // Modified (yellow)
+                case 'R': return '<span style="color: #1f6feb;">→</span>'; // Renamed (blue)
+                default: return '<span style="color: #bf8700;">●</span>'; // Default modified
+            }
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function showCommentForm(file, line, button) {
+            // Remove any existing comment form
+            if (activeCommentForm) {
+                activeCommentForm.remove();
+                activeCommentForm = null;
+            }
+
+            const diffLine = button.closest('.diff-line');
+            const form = document.createElement('div');
+            form.className = 'comment-form';
+            form.innerHTML = 
+                '<textarea class="comment-input" placeholder="Add a comment..."></textarea>' +
+                '<div class="comment-actions">' +
+                '<button class="btn btn-primary" onclick="addComment(\\'' + file + '\\', ' + line + ', this)">Add Comment</button>' +
+                '<button class="btn btn-secondary" onclick="cancelComment(this)">Cancel</button>' +
+                '</div>';
+            
+            diffLine.parentNode.insertBefore(form, diffLine.nextSibling);
+            activeCommentForm = form;
+            form.querySelector('.comment-input').focus();
+        }
+
+        function addComment(file, line, button) {
+            const form = button.closest('.comment-form');
+            const input = form.querySelector('.comment-input');
+            const text = input.value.trim();
+            
+            if (!text) return;
+            
+            comments.push({ file, line, text });
+            form.remove();
+            activeCommentForm = null;
+            updateCommentsList();
+        }
+
+        function cancelComment(button) {
+            const form = button.closest('.comment-form');
+            form.remove();
+            activeCommentForm = null;
+        }
+
+        function updateCommentsList() {
+            const list = document.getElementById('commentsList');
+            if (comments.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+            
+            let html = '<h4 style="margin: 16px 0 8px 0; color: #f0f6fc;">Comments (' + comments.length + ')</h4>';
+            
+            comments.forEach((comment, index) => {
+                html += '<div class="comment-item">';
+                html += '<div class="comment-meta">' + comment.file + ':' + comment.line + '</div>';
+                html += '<div>' + escapeHtml(comment.text) + '</div>';
+                html += '<button class="btn btn-secondary" style="margin-top: 8px; padding: 4px 8px; font-size: 12px;" onclick="removeComment(' + index + ')">Remove</button>';
+                html += '</div>';
+            });
+            
+            list.innerHTML = html;
+        }
+
+        function removeComment(index) {
+            comments.splice(index, 1);
+            updateCommentsList();
+        }
+
+        function attachCommentHandlers() {
+            // Handlers are attached via onclick in the HTML
+        }
+
+        function toggleSection(sectionId, headerElement) {
+            const content = document.getElementById(sectionId);
+            const icon = headerElement.querySelector('.toggle-icon');
+            
+            if (content.style.display === 'none') {
+                content.style.display = 'block';
+                icon.textContent = '▼';
+            } else {
+                content.style.display = 'none';
+                icon.textContent = '▶️';
+            }
+        }
+
+        // Load default commit message
+        async function loadDefaultMessage() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                if (data.defaultCommitMessage) {
+                    document.getElementById('commitMessage').value = data.defaultCommitMessage;
+                }
+            } catch (error) {
+                console.error('Error loading default message:', error);
+            }
+        }
+
+        // Approve/Reject handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDefaultMessage();
+            
+            document.getElementById('approveBtn').addEventListener('click', async () => {
+                const message = document.getElementById('commitMessage').value.trim();
+                
+                console.log('Approve button clicked, message:', message);
+                console.log('Comments:', comments);
+                
+                if (!message) {
+                    alert('Please enter a commit message');
+                    return;
+                }
+                
+                try {
+                    console.log('Sending approval request...');
+                    const response = await fetch('/api/approve', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            message: message,
+                            fileComments: comments 
+                        })
+                    });
+                    
+                    console.log('Response status:', response.status);
+                    console.log('Response ok:', response.ok);
+                    
+                    const result = await response.json();
+                    console.log('Response result:', result);
+                    
+                    if (result.success) {
+                        // Status element was removed, so skip status updates
+                        
+                        if (result.autoClose) {
+                            // Show success message briefly, then close
+                            document.body.innerHTML = '<div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #0d1117; color: #238636; font-size: 24px; font-family: -apple-system, BlinkMacSystemFont, \\'Segoe UI\\', Roboto, sans-serif;">✅ Changes committed successfully! Closing...</div>';
+                            setTimeout(() => {
+                                window.close();
+                            }, 2000);
+                        } else {
+                            alert('Changes approved and committed successfully!');
+                        }
+                    } else {
+                        console.error('Approval failed:', result);
+                        alert('Error: ' + (result.error || 'Unknown error occurred'));
+                    }
+                } catch (error) {
+                    console.error('Error approving changes:', error);
+                    alert('Error approving changes: ' + error.message);
+                }
+            });
+
+            document.getElementById('rejectBtn').addEventListener('click', async () => {
+                if (confirm('Are you sure you want to reject these changes?')) {
+                    console.log('Reject button clicked');
+                    console.log('Comments to send:', comments);
+                    
+                    try {
+                        console.log('Sending reject request...');
+                        const response = await fetch('/api/reject', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                fileComments: comments 
+                            })
+                        });
+                        
+                        console.log('Reject response status:', response.status);
+                        console.log('Reject response ok:', response.ok);
+                        
+                        if (response.ok) {
+                            // Status element was removed, so skip status updates
+                            
+                            // Show rejection confirmation
+                            let message = 'Changes rejected';
+                            if (comments.length > 0) {
+                                message += \`\\n\\nYour \${comments.length} comment(s) have been formatted for LLM analysis.\`;
+                            }
+                            
+                            alert(message);
+                        }
+                    } catch (error) {
+                        console.error('Error rejecting changes:', error);
+                        alert('Error rejecting changes: ' + error.message);
+                    }
+                }
+            });
+
+            // Load diff on page load
+            loadDiff();
+        });
+    `);
+});
+
+// Parse command line arguments
+function parseArgs() {
+    const args = process.argv.slice(2);
+    const options = {
+        message: '',
+        help: false
+    };
+    
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        if (arg === '--help' || arg === '-h') {
+            options.help = true;
+        } else if (arg === '--message' || arg === '-m') {
+            if (i + 1 < args.length) {
+                options.message = args[i + 1];
+                i++; // Skip next argument
+            } else {
+                console.error('❌ Error: --message requires a value');
+                process.exit(1);
+            }
+        } else if (arg.startsWith('--message=')) {
+            options.message = arg.substring('--message='.length);
+        } else if (arg.startsWith('-m=')) {
+            options.message = arg.substring('-m='.length);
+        } else if (!arg.startsWith('-')) {
+            // Treat as commit message if no flag
+            options.message = arg;
+        } else {
+            console.error(`❌ Error: Unknown option ${arg}`);
+            console.error('Use --help for usage information');
+            process.exit(1);
+        }
+    }
+    
+    return options;
+}
+
+function showHelp() {
+    console.log(`
+🔍 Git Approve - Review changes before commit
+
+Usage: git-approve -m <commit-message> [options]
+
+Options:
+  -m, --message <msg>    Commit message (REQUIRED)
+  -h, --help            Show this help message
+
+Examples:
+  git-approve -m "Add new feature"
+  git-approve --message "Fix bug in login"
+  git-approve -m "Update documentation"
+
+Features:
+  • GitHub-style diff viewer in browser
+  • Line-by-line commenting system
+  • Approval workflow before committing
+  • Shows both staged and unstaged changes
+  • Auto-closes browser after successful commit
+`);
+}
+
+// Main function
+function main() {
+    const options = parseArgs();
+    
+    if (options.help) {
+        showHelp();
+        process.exit(0);
+    }
+    
+    // Check if commit message is provided (required)
+    if (!options.message || options.message.trim() === '') {
+        console.error('❌ Error: Commit message is required');
+        console.error('Usage: git-approve -m "commit message"');
+        console.error('Use --help for more information');
+        process.exit(1);
+    }
+    
+    // Set commit message
+    defaultCommitMessage = options.message.trim();
+    
+    console.log('🔍 Git Approve - Review changes before commit\n');
+    
+    // Check if we're in a git repository
+    if (!checkGitRepo()) {
+        console.error('❌ Error: Not in a git repository');
+        process.exit(1);
+    }
+    
+    // Check if there are any changes
+    const diffData = getDiffData();
+    if (!diffData.hasChanges) {
+        console.log('ℹ️  No changes to review');
+        process.exit(0);
+    }
+    
+    // Check if there are staged changes
+    if (!diffData.hasStagedChanges) {
+        console.error('❌ Error: No staged changes found');
+        console.error('');
+        console.error('You need to stage files before committing.');
+        console.error('Please use git add to stage specific files:');
+        console.error('');
+        
+        if (diffData.unstagedFiles.length > 0) {
+            console.error('📋 Unstaged files that can be added:');
+            diffData.unstagedFiles.forEach(file => {
+                console.error(`   git add ${file.filename}`);
+            });
+            console.error('');
+        }
+        
+        console.error('💡 Avoid using:');
+        console.error('   git add .     (adds all files)');
+        console.error('   git add -A    (adds all files)');
+        console.error('');
+        console.error('Instead, add files individually for better control.');
+        process.exit(1);
+    }
+    
+    console.log('📊 Changes detected:');
+    if (diffData.staged) {
+        console.log('  • Staged changes found');
+    }
+    if (diffData.unstaged) {
+        console.log('  • Unstaged changes found');
+    }
+    
+    if (defaultCommitMessage) {
+        console.log(`📝 Default commit message: "${defaultCommitMessage}"`);
+    }
+    
+    // Start server
+    server = app.listen(PORT, () => {
+        const url = `http://localhost:${PORT}`;
+        console.log(`\n🚀 Review server started at ${url}`);
+        console.log('🌐 Opening browser...');
+        
+        // Open browser
+        open(url).catch(err => {
+            console.log('⚠️  Could not open browser automatically');
+            console.log(`   Please open ${url} manually`);
+        });
+        
+        console.log('\n⏳ Waiting for your review...');
+        console.log('   • Review changes in browser');
+        console.log('   • Add comments if needed');
+        console.log('   • Approve to commit or reject to cancel');
+        console.log('\nPress Ctrl+C to cancel');
+        
+    });
+    
+    // Handle process termination
+    process.on('SIGINT', () => {
+        console.log('\n\n👋 Review cancelled');
+        process.exit(0);
+    });
+    
+    process.on('SIGTERM', () => {
+        console.log('\n\n👋 Review cancelled');
+        process.exit(0);
+    });
+}
+
+// Check for required dependencies
+try {
+    require.resolve('express');
+    require.resolve('open');
+} catch (error) {
+    console.error('❌ Missing dependencies. Please install:');
+    console.error('   npm install express open');
+    process.exit(1);
+}
+
+if (require.main === module) {
+    main();
+}
