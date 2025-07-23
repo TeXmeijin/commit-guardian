@@ -19,7 +19,7 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const isApproveDisabled = !commitMessage.trim() || rejectReason.trim().length > 0 || isSubmitting
-  const isRejectDisabled = !rejectReason.trim() || isSubmitting
+  const isRejectDisabled = (!rejectReason.trim() && comments.length === 0) || isSubmitting
 
   const handleApprove = async () => {
     if (isApproveDisabled) return
@@ -65,10 +65,6 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
 
   const handleReject = async () => {
     if (isRejectDisabled) return
-
-    if (!confirm('Are you sure you want to reject these changes?')) {
-      return
-    }
 
     setIsSubmitting(true)
     try {
