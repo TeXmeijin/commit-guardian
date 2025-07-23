@@ -114,8 +114,19 @@ const DiffContent: React.FC<DiffContentProps> = ({
   }
 
   const handleAddComment = (file: string, lineNumber: number) => {
-    setActiveCommentLine(lineNumber)
-    setActiveFile(file)
+    // Close any existing comment form before opening a new one
+    if (activeCommentLine !== null) {
+      setActiveCommentLine(null)
+      setActiveFile('')
+      // Use setTimeout to ensure state update is processed before opening new form
+      setTimeout(() => {
+        setActiveCommentLine(lineNumber)
+        setActiveFile(file)
+      }, 0)
+    } else {
+      setActiveCommentLine(lineNumber)
+      setActiveFile(file)
+    }
   }
 
   const handleSubmitComment = (text: string) => {

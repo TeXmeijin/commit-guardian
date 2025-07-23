@@ -86,11 +86,16 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
       const result = await response.json()
       
       if (result.success) {
-        let message = 'Changes rejected'
-        if (comments.length > 0) {
-          message += `\n\nYour ${comments.length} comment(s) have been formatted for LLM analysis.`
-        }
-        alert(message)
+        document.body.innerHTML = `
+          <div class="min-h-screen flex items-center justify-center bg-github-canvas-default">
+            <div class="text-center">
+              <div class="text-2xl text-github-danger-fg mb-4">❌ Changes rejected</div>
+              ${comments.length > 0 ? `<div class="text-github-fg-muted mb-2">Your ${comments.length} comment(s) have been formatted for LLM analysis.</div>` : ''}
+              <div class="text-github-fg-muted">Closing...</div>
+            </div>
+          </div>
+        `
+        setTimeout(() => window.close(), 2000)
       } else {
         alert('Error rejecting changes: ' + (result.error || 'Unknown error'))
       }

@@ -17,7 +17,7 @@ app.use('/api', approveRoutes)
 app.use('/api', rejectRoutes)
 
 // Serve static files (both development and production)
-const clientDistPath = path.join(process.cwd(), 'dist/client')
+const clientDistPath = path.join(__dirname, '../client')
 app.use(express.static(clientDistPath))
 
 // Handle client-side routing (except API routes)
