@@ -109,92 +109,101 @@ const ActionPanel: React.FC<ActionPanelProps> = ({
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-github-canvas-subtle border-t border-github-border-default shadow-2xl">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-end space-x-4">
-          {/* Commit Message */}
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-github-fg-muted mb-1">
-              Commit Message:
-            </label>
-            <textarea
-              value={commitMessage}
-              onChange={(e) => setCommitMessage(e.target.value)}
-              onFocus={handleCommitMessageFocus}
-              placeholder="Enter your commit message..."
-              className="input-field w-full h-9 resize-none"
-              required
-            />
-          </div>
-
-          {/* Reject Reason */}
-          <div className="flex-1">
-            <label className="block text-xs font-medium text-github-fg-muted mb-1">
-              Reject Reason:
-            </label>
-            <textarea
-              value={rejectReason}
-              onChange={(e) => setRejectReason(e.target.value)}
-              placeholder="Enter reason for rejection..."
-              className="input-field w-full h-9 resize-none"
-            />
-          </div>
-
-          {/* Comments Summary */}
-          {comments.length > 0 && (
-            <div className="flex-shrink-0 text-xs text-github-fg-muted">
-              {comments.length} comment{comments.length !== 1 ? 's' : ''}
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="flex space-x-2 flex-shrink-0">
-            <button
-              onClick={handleApprove}
-              disabled={isApproveDisabled}
-              className="btn btn-primary h-9 flex items-center space-x-1"
-            >
-              <Check className="h-4 w-4" />
-              <span>Approve</span>
-            </button>
-            
-            <button
-              onClick={handleReject}
-              disabled={isRejectDisabled}
-              className="btn btn-danger h-9 flex items-center space-x-1"
-            >
-              <X className="h-4 w-4" />
-              <span>Reject</span>
-            </button>
-          </div>
+    <div className="action-panel">
+      <div className="action-content">
+        {/* Commit Message */}
+        <div className="action-field">
+          <label>Commit Message:</label>
+          <textarea
+            value={commitMessage}
+            onChange={(e) => setCommitMessage(e.target.value)}
+            onFocus={handleCommitMessageFocus}
+            placeholder="Enter your commit message..."
+            className="input-field"
+            required
+          />
         </div>
 
-        {/* Comments List */}
+        {/* Reject Reason */}
+        <div className="action-field">
+          <label>Reject Reason:</label>
+          <textarea
+            value={rejectReason}
+            onChange={(e) => setRejectReason(e.target.value)}
+            placeholder="Enter reason for rejection..."
+            className="input-field"
+          />
+        </div>
+
+        {/* Comments Summary */}
         {comments.length > 0 && (
-          <div className="mt-4 space-y-1 max-h-32 overflow-y-auto">
-            {comments.map((comment) => (
-              <div
-                key={comment.id}
-                className="flex items-start justify-between bg-github-canvas-default border border-github-border-default rounded p-2 text-xs"
-              >
-                <div className="flex-1">
-                  <div className="text-github-fg-muted">
-                    {comment.file}:{comment.line}
-                  </div>
-                  <div className="text-github-fg-default mt-1">{comment.text}</div>
-                </div>
-                <button
-                  onClick={() => onRemoveComment(comment.id)}
-                  className="flex-shrink-0 ml-2 p-1 hover:bg-github-danger-subtle rounded transition-colors"
-                  title="Remove comment"
-                >
-                  <Trash2 className="h-3 w-3 text-github-danger-fg" />
-                </button>
-              </div>
-            ))}
+          <div className="text-muted" style={{ fontSize: '11px', padding: '8px 0' }}>
+            {comments.length} comment{comments.length !== 1 ? 's' : ''}
           </div>
         )}
+
+        {/* Action Buttons */}
+        <div className="action-buttons">
+          <button
+            onClick={handleApprove}
+            disabled={isApproveDisabled}
+            className="btn btn-primary"
+          >
+            <Check size={16} />
+            <span>Approve</span>
+          </button>
+          
+          <button
+            onClick={handleReject}
+            disabled={isRejectDisabled}
+            className="btn btn-danger"
+          >
+            <X size={16} />
+            <span>Reject</span>
+          </button>
+        </div>
       </div>
+
+      {/* Comments List */}
+      {comments.length > 0 && (
+        <div style={{ marginTop: '12px', maxHeight: '120px', overflowY: 'auto' }}>
+          {comments.map((comment) => (
+            <div
+              key={comment.id}
+              style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'start',
+                background: '#0d1117',
+                border: '1px solid #30363d',
+                borderRadius: '6px',
+                padding: '8px',
+                marginBottom: '4px',
+                fontSize: '11px'
+              }}
+            >
+              <div>
+                <div className="text-muted">{comment.file}:{comment.line}</div>
+                <div style={{ marginTop: '2px', color: '#e6edf3' }}>{comment.text}</div>
+              </div>
+              <button
+                onClick={() => onRemoveComment(comment.id)}
+                style={{ 
+                  marginLeft: '8px',
+                  padding: '4px',
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+                title="Remove comment"
+              >
+                <Trash2 size={12} style={{ color: '#f85149' }} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

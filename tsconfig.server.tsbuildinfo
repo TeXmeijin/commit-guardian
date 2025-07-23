@@ -1,0 +1,1 @@
+{"root":["./src/server/server.ts","./src/server/routes/approve.ts","./src/server/routes/diff.ts","./src/server/routes/reject.ts","./src/cli/index.ts","./src/types/api.ts","./src/types/git.ts"],"version":"5.8.3"}

@@ -26,20 +26,16 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
   }
 
   return (
-    <div className="space-y-4">
+    <div>
       {/* Staged Changes */}
       {diffData.staged && (
-        <div className="border border-github-border-default rounded-md bg-github-canvas-subtle">
+        <div className="diff-container">
           <div
-            className="flex items-center justify-between p-3 bg-github-canvas-subtle border-b border-github-border-default cursor-pointer hover:bg-github-border-muted/50"
+            className="diff-header"
             onClick={() => toggleSection('staged')}
           >
-            <div className="flex items-center space-x-2">
-              <span className="text-lg">
-                {collapsedSections.staged ? '▶' : '▼'}
-              </span>
-              <h3 className="font-medium text-github-fg-default">Staged Changes</h3>
-            </div>
+            <span>{collapsedSections.staged ? '▶' : '▼'}</span>
+            <span>Staged Changes</span>
           </div>
           
           {!collapsedSections.staged && (
@@ -55,17 +51,13 @@ const DiffViewer: React.FC<DiffViewerProps> = ({
 
       {/* Unstaged Changes */}
       {diffData.unstaged && (
-        <div className="border border-github-border-default rounded-md bg-github-canvas-subtle">
+        <div className="diff-container">
           <div
-            className="flex items-center justify-between p-3 bg-github-canvas-subtle border-b border-github-border-default cursor-pointer hover:bg-github-border-muted/50"
+            className="diff-header"
             onClick={() => toggleSection('unstaged')}
           >
-            <div className="flex items-center space-x-2">
-              <span className="text-lg">
-                {collapsedSections.unstaged ? '▶' : '▼'}
-              </span>
-              <h3 className="font-medium text-github-fg-default">Unstaged Changes</h3>
-            </div>
+            <span>{collapsedSections.unstaged ? '▶' : '▼'}</span>
+            <span>Unstaged Changes</span>
           </div>
           
           {!collapsedSections.unstaged && (

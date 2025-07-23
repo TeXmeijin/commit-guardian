@@ -68,3 +68,6 @@ logs
 test.txt
 *.tmp
 *.temp
+
+# Build output
+dist/

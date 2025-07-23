@@ -16,16 +16,19 @@ app.use('/api', diffRoutes)
 app.use('/api', approveRoutes)
 app.use('/api', rejectRoutes)
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  const clientDistPath = path.join(process.cwd(), 'dist/client')
-  app.use(express.static(clientDistPath))
-  
-  // Handle client-side routing
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(clientDistPath, 'index.html'))
-  })
-}
+// Serve static files (both development and production)
+const clientDistPath = path.join(process.cwd(), 'dist/client')
+app.use(express.static(clientDistPath))
+
+// Handle client-side routing (except API routes)
+app.get('/', (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'))
+})
+
+// Fallback for other non-API routes
+app.get(/^(?!\/api).*/, (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'))
+})
 
 export default app
 

@@ -141,15 +141,21 @@ const DiffContent: React.FC<DiffContentProps> = ({
     
     if (type === 'file') {
       return (
-        <div key={lineIndex} className="bg-github-canvas-subtle border-b border-github-border-default p-2">
-          <div className="font-medium text-github-fg-default text-sm">{content}</div>
+        <div key={lineIndex} style={{ 
+          background: '#21262d', 
+          borderBottom: '1px solid #30363d', 
+          padding: '8px 12px',
+          fontWeight: '500',
+          fontSize: '12px'
+        }}>
+          {content}
         </div>
       )
     }
 
     if (type === 'header') {
       return (
-        <div key={lineIndex} className="bg-github-border-muted text-github-fg-muted px-2 py-1 text-xs font-mono">
+        <div key={lineIndex} className="diff-line-header" style={{ padding: '2px 8px' }}>
           {content}
         </div>
       )
@@ -161,31 +167,42 @@ const DiffContent: React.FC<DiffContentProps> = ({
     return (
       <React.Fragment key={lineIndex}>
         <div
-          className={`flex group hover:bg-github-border-muted/30 ${
-            type === 'add' ? 'bg-github-diff-addition-bg/20' :
-            type === 'del' ? 'bg-github-diff-deletion-bg/20' : ''
+          className={`diff-line ${
+            type === 'add' ? 'diff-line-add' :
+            type === 'del' ? 'diff-line-del' : ''
           }`}
         >
-          <div className="flex-shrink-0 w-16 px-2 py-1 text-xs text-github-fg-subtle font-mono text-right bg-github-canvas-subtle border-r border-github-border-default">
+          <div className="diff-line-number">
             {displayLineNumber > 0 ? displayLineNumber : ''}
           </div>
           
-          <div className="flex-1 px-2 py-1 text-sm font-mono relative">
-            <span className={`${
-              type === 'add' ? 'text-github-diff-addition-fg' :
-              type === 'del' ? 'text-github-diff-deletion-fg' :
-              'text-github-fg-default'
-            }`}>
-              {content}
-            </span>
+          <div className="diff-line-content" style={{ position: 'relative' }}>
+            {content}
             
             {canComment && (
               <button
                 onClick={() => handleAddComment(file, displayLineNumber)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-github-success-subtle transition-all"
+                style={{
+                  position: 'absolute',
+                  right: '8px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: '#238636',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '3px',
+                  padding: '2px 6px',
+                  fontSize: '10px',
+                  cursor: 'pointer',
+                  opacity: 0,
+                  transition: 'opacity 0.2s'
+                }}
+                className="comment-btn"
                 title="Add comment"
+                onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
               >
-                <MessageSquarePlus className="h-3 w-3 text-github-success-fg" />
+                <MessageSquarePlus size={12} />
               </button>
             )}
           </div>
@@ -193,17 +210,26 @@ const DiffContent: React.FC<DiffContentProps> = ({
 
         {/* Render existing comments */}
         {lineComments.map(comment => (
-          <div key={comment.id} className="bg-github-canvas-subtle border-l-2 border-github-success-subtle px-4 py-2">
-            <div className="text-xs text-github-fg-muted mb-1">
+          <div key={comment.id} style={{
+            background: '#161b22',
+            borderLeft: '2px solid #238636',
+            padding: '8px 16px',
+            fontSize: '11px'
+          }}>
+            <div className="text-muted" style={{ marginBottom: '4px' }}>
               {file}:{displayLineNumber}
             </div>
-            <div className="text-sm text-github-fg-default">{comment.text}</div>
+            <div>{comment.text}</div>
           </div>
         ))}
 
         {/* Render active comment form */}
         {activeCommentLine === displayLineNumber && activeFile === file && (
-          <div className="bg-github-canvas-subtle border-l-2 border-github-success-subtle px-4 py-3">
+          <div style={{
+            background: '#161b22',
+            borderLeft: '2px solid #238636',
+            padding: '12px 16px'
+          }}>
             <CommentForm
               onSubmit={handleSubmitComment}
               onCancel={handleCancelComment}
@@ -215,7 +241,7 @@ const DiffContent: React.FC<DiffContentProps> = ({
   }
 
   return (
-    <div className="bg-github-canvas-default">
+    <div className="diff-content">
       {lines.map(renderLine)}
     </div>
   )

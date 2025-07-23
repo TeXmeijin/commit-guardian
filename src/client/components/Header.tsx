@@ -12,36 +12,34 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ stats, commentCount }) => {
   return (
-    <header className="border-b border-github-border-default bg-github-canvas-subtle">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <Shield className="h-6 w-6 text-github-success-fg" />
-            <h1 className="text-lg font-semibold text-github-fg-default">
-              Commit Guardian - Review Changes
-            </h1>
+    <header className="header">
+      <div className="container">
+        <div className="header-content">
+          <div className="header-title">
+            <Shield size={24} style={{ color: '#3fb950' }} />
+            <h1>Commit Guardian - Review Changes</h1>
           </div>
           
-          <div className="flex items-center space-x-6 text-sm text-github-fg-muted">
-            <div className="flex items-center space-x-1">
-              <GitCommit className="h-4 w-4" />
+          <div className="header-stats">
+            <div className="header-stat">
+              <GitCommit size={16} />
               <span>{stats.totalFiles} files</span>
             </div>
             
             {stats.totalAdditions > 0 && (
-              <div className="text-github-diff-addition-fg">
+              <div className="text-green">
                 +{stats.totalAdditions}
               </div>
             )}
             
             {stats.totalDeletions > 0 && (
-              <div className="text-github-diff-deletion-fg">
+              <div className="text-red">
                 -{stats.totalDeletions}
               </div>
             )}
             
             {commentCount > 0 && (
-              <div className="text-github-fg-default">
+              <div style={{ color: '#e6edf3' }}>
                 💬 {commentCount} comment{commentCount !== 1 ? 's' : ''}
               </div>
             )}

@@ -4,10 +4,12 @@
     "target": "ES2022",
     "lib": ["ES2023"],
     "module": "CommonJS",
+    "moduleResolution": "node",
     "jsx": "preserve",
     "noEmit": false,
     "outDir": "dist",
-    "declaration": false
+    "declaration": false,
+    "allowImportingTsExtensions": false
   },
   "include": [
     "src/server/**/*",

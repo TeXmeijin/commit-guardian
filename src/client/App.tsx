@@ -52,41 +52,38 @@ function App() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
+      <div className="loading">
+        <div className="spinner"></div>
+        <div>Loading changes...</div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-github-danger-fg text-lg mb-2">Error loading changes</div>
-          <div className="text-github-fg-muted">{error}</div>
-        </div>
+      <div className="loading">
+        <div style={{ color: '#f85149', fontSize: '16px' }}>Error loading changes</div>
+        <div>{error}</div>
       </div>
     )
   }
 
   if (!diffData?.hasChanges) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center text-github-fg-muted">
-          <div className="text-lg">No changes to review</div>
-        </div>
+      <div className="loading">
+        <div>No changes to review</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="pb-32">
       <Header 
         stats={diffData.stats} 
         commentCount={comments.length}
       />
       
-      <main className="container mx-auto px-4 pb-32">
+      <main className="container" style={{ padding: '16px' }}>
         <DiffViewer 
           diffData={diffData}
           comments={comments}

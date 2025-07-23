@@ -18,26 +18,36 @@ const CommentForm: React.FC<CommentFormProps> = ({ onSubmit, onCancel }) => {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3">
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       <textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
         placeholder="Add a comment..."
-        className="input-field w-full min-h-[80px]"
+        className="input-field"
+        style={{ minHeight: '60px', width: '100%' }}
         autoFocus
       />
-      <div className="flex space-x-2">
+      <div style={{ display: 'flex', gap: '8px' }}>
         <button
           type="submit"
           disabled={!text.trim()}
-          className="btn btn-primary text-xs px-3 py-1"
+          className="btn btn-primary"
+          style={{ fontSize: '11px', padding: '4px 12px' }}
         >
           Add Comment
         </button>
         <button
           type="button"
           onClick={onCancel}
-          className="btn border-github-border-default text-github-fg-default hover:bg-github-border-muted text-xs px-3 py-1"
+          style={{ 
+            fontSize: '11px', 
+            padding: '4px 12px', 
+            background: 'transparent',
+            border: '1px solid #30363d',
+            color: '#e6edf3',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
         >
           Cancel
         </button>
