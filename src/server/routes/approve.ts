@@ -51,11 +51,24 @@ router.post('/approve', async (req, res) => {
     }, 1000)
 
   } catch (error) {
-    console.error('Error committing changes:', error)
+    console.error('\n❌ Commit failed!')
+    console.error('Error details:')
+    if (error instanceof Error) {
+      console.error(error.message)
+    } else {
+      console.error(error)
+    }
+    
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : 'Commit failed'
     })
+    
+    // Exit process after commit failure so LLM can continue
+    setTimeout(() => {
+      console.log('🚪 Shutting down server after commit failure...')
+      process.exit(1)
+    }, 1000)
   }
 })
 

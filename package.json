@@ -1,6 +1,6 @@
 {
   "name": "commit-guardian",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Interactive CLI tool with browser-based GitHub-style diff viewer for reviewing and approving git changes before commit. Features React-based UI, approval workflow, line comments, and safe commit protection.",
   "main": "dist/cli/index.js",
   "bin": {
